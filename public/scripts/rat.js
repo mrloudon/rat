@@ -50,9 +50,13 @@ const Rat = (function () {
             this.ctx.closePath();
             this.ctx.fill();
         },
-         
+
         clear() {
             this.ctx.clearRect(...this.boundary);
+        },
+
+        inside(point){
+            return pointInPoly(point, this.vertices);
         }
 
     };
@@ -115,7 +119,7 @@ const Rat = (function () {
 
         setPosition(pos) {
             this.center = pos;
-            this.boundary = [this.center.x - this.radius, this.center.y - this.radius, 2 * this.radius, 2 * this.radius];
+            this.boundary = [this.center.x - this.radius - 1, this.center.y - this.radius - 1, 2 * this.radius + 2, 2 * this.radius + 2];
         },
 
         inside(point) {
@@ -124,11 +128,39 @@ const Rat = (function () {
 
     };
 
+    function pointInPoly(point, vs) {
+        // ray-casting algorithm based on
+        // https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html/pnpoly.html
+
+        let x = point.x, y = point.y;
+
+        let inside = false;
+        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+            const xi = vs[i][0], yi = vs[i][1];
+            const xj = vs[j][0], yj = vs[j][1];
+
+            const intersect = ((yi > y) != (yj > y))
+                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) {
+                inside = !inside;
+            }
+        }
+
+        return inside;
+    }
+
+
     function run() {
-        const coordsFB = document.querySelector("h3.coords");
+        //const coordsFB = document.querySelector("h3.coords");
         const stopBtn = document.getElementById("stop-btn");
+        const startBtn = document.getElementById("start-btn");
         const whiteBtn = document.getElementById("white-btn");
         const blackBtn = document.getElementById("black-btn");
+        const showBtn = document.getElementById("show-btn");
+        const hideBtn = document.getElementById("hide-btn");
+        const squareBtn = document.getElementById("square-btn");
+        const circleBtn = document.getElementById("circle-btn");
+        const starBtn = document.getElementById("star-btn");
         const timeSpan = document.getElementById("time-span");
         const canvas = document.getElementById("c");
         const context = canvas.getContext("2d");
@@ -148,7 +180,6 @@ const Rat = (function () {
 
         function animationLoop() {
             if (stopAnimation) {
-                shape.clear();
                 return;
             }
             position.x += direction;
@@ -163,19 +194,77 @@ const Rat = (function () {
             window.requestAnimationFrame(animationLoop);
         }
 
-        stopBtn.addEventListener("click", () => stopAnimation = true);
-        whiteBtn.addEventListener("click", () => canvas.style.backgroundColor = "white");
-        blackBtn.addEventListener("click", () => canvas.style.backgroundColor = "black");
+        function attachListeners() {
+            stopBtn.addEventListener("click", () => stopAnimation = true);
+            startBtn.addEventListener("click", () => {
+                stopAnimation = false;
+                window.requestAnimationFrame(animationLoop);
+            });
+            whiteBtn.addEventListener("click", () => canvas.style.backgroundColor = "white");
+            blackBtn.addEventListener("click", () => canvas.style.backgroundColor = "black");
+            showBtn.addEventListener("click", () => shape && shape.draw());
+            hideBtn.addEventListener("click", () => shape && shape.clear());
+            squareBtn.addEventListener("click", () => {
+                let temp = stopAnimation;
+                stopAnimation = true;
+                window.requestAnimationFrame(() => {
+                    shape && shape.clear();
+                    shape = Square;
+                    stimulusType = "square";
+                    shape.setPosition(position);
+                    shape.draw();
+                    stopAnimation = temp;
+                    if(!stopAnimation){
+                        window.requestAnimationFrame(animationLoop);
+                    }
+                });
+            });
+            circleBtn.addEventListener("click", () => {
+                let temp = stopAnimation;
+                stopAnimation = true;
+                window.requestAnimationFrame(() => {
+                    shape && shape.clear();
+                    shape = Circle;
+                    stimulusType = "circle";
+                    shape.setPosition(position);
+                    shape.draw();
+                    stopAnimation = temp;
+                    if(!stopAnimation){
+                        window.requestAnimationFrame(animationLoop);
+                    }
+                });
+            });
+            starBtn.addEventListener("click", () => {
+                let temp = stopAnimation;
+                stopAnimation = true;
+                window.requestAnimationFrame(() => {
+                    shape && shape.clear();
+                    shape = Star;
+                    stimulusType = "star";
+                    shape.setPosition(position);
+                    shape.draw();
+                    stopAnimation = temp;
+                    if(!stopAnimation){
+                        window.requestAnimationFrame(animationLoop);
+                    }
+                });
+            });
+            canvas.addEventListener("mousedown", onClick);
+        }
 
-        canvas.addEventListener("mousedown", onClick);
-
-        shape = Star;
-        stimulusType = "circle1";
+        attachListeners();
+       
         minX = 100;
         maxX = 900;
-        position.y = 450;
+        position.y = 250;
         position.x = minX;
-        shape.initialise(context, position, 7, 100, 65, "green");
+       
+        Circle.initialise(context, position, CM_1, "green");
+        Square.initialise(context, position, 150, "green");
+        Star.initialise(context, position, 7, 100, 65, "green");
+
+        shape = Circle;
+        stimulusType = "circle";
         shape.draw();
 
         direction = 4;
@@ -203,7 +292,7 @@ const Rat = (function () {
             timeSpan.innerHTML = `${hours}:${mins}:${secs}.${tenths}`;
         }, 100);
 
-        coordsFB.innerHTML = "Running";
+
     }
 
     return { run };
